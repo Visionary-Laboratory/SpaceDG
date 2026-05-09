@@ -20,8 +20,9 @@ Multimodal Large Language Models (MLLMs) have improved spatial reasoning, yet mo
 Use the EASI setup script to prepare the runtime environment (Python deps, toolchain, etc.).
 
 ```bash
-cd <PATH_TO_THIS_REPO>/SpaceDG
-bash easi/scripts/setup.sh
+git clone https://github.com/Visionary-Laboratory/SpaceDG.git
+cd SpaceDG/EASI
+bash scripts/setup.sh
 ```
 
 ### 2) Prepare Data
