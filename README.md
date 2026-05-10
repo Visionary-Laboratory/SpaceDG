@@ -17,7 +17,7 @@ Multimodal Large Language Models (MLLMs) have improved spatial reasoning, yet mo
 
 ### 1) Environment Setup
 
-Use the EASI setup script to prepare the runtime environment (Python deps, toolchain, etc.).
+Use the EASI setup script to prepare the runtime environment with uv.
 
 ```bash
 git clone https://github.com/Visionary-Laboratory/SpaceDG.git
@@ -36,9 +36,11 @@ After you have download SpaceDG-Bench, run `prepare_data.py`. Then we follow the
 Example:
 
 ```bash
-export LMUData=/data/SpaceDG-Bench
+export LMUData=~/LMUData
 ls "$LMUData/spacedg_bench.tsv"
 ```
+
+If you have manually prepared data, do `export SPACEDG_BENCH_ROOT=/path/to/SpaceDG_Bench` which contains a `spacedg_bench.tsv` and `images` path to skip downloading.
 
 ### 3) Run Ealuation with VLMEvalKit
 
@@ -51,8 +53,7 @@ Run it from the VLMEvalKit root:
 ```bash
 cd <PATH_TO_THIS_REPO>/SpaceDG/EASI/VLMEvalKit
 
-export LMUData=/data/SpaceDG-Bench # change to your data path
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun run.py \
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun run.py \
   --model InternVL3_5-8B \
   --data spacedg_bench \
   --mode all \

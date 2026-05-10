@@ -14,8 +14,11 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from huggingface_hub import snapshot_download
+
 from ..smp.file import LMUDataRoot, get_intermediate_file_path, load
 from ..smp import read_ok, toliststr
+from ..smp.misc import modelscope_flag_set
 from .image_base import ImageBaseDataset, img_root_map
 from .utils.spatial_bench.cal_scores import (
     attach_score_cache,
@@ -303,17 +306,33 @@ class SpaceDGBench(ImageBaseDataset):
     """
     SpaceDG Bench (EASI local benchmark layout).
 
-    This implementation expects images to be prepared under LMUData/images/spacedg_bench/
-    and a TSV annotation file under LMUData/spacedg_bench/spacedg_bench.tsv (or via env overrides).
+    On first use, this class will:
+      1. Auto-download `spacedg_bench.tsv` from HuggingFace into LMUData/.
+      2. Auto-download the parquet shards under `data/` from the same HF repo
+         and extract the embedded images into LMUData/images/spacedg_bench/
+         (driven by `prepare_data()`; protected by a sentinel file so it only
+         runs once).
 
-    If you currently have an HF-style parquet (with an `images` column), run:
-      VLMEvalKit/scripts/preprocess_spacedg_bench_parquet.py
+    Manual overrides:
+      - SPACEDG_BENCH_TSV_LMU: absolute path to a pre-prepared TSV (TSV URL download
+        skipped; parquet/image Hub download still runs unless images already extracted).
+      - SPACEDG_BENCH_ROOT: directory containing spacedg_bench.tsv. Skips **all** Hub
+        downloads (no TSV URL, no ``prepare_data`` / parquet). You must place images
+        so ``dump_image`` can resolve ``image_path`` (typically under this directory).
     """
 
     TYPE = "MIXED"
     MODALITY = "IMAGE"
 
     LMUData_root = LMUDataRoot()
+
+    DATASET_URL = {
+        "spacedg_bench": "https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench/resolve/main/spacedg_bench.tsv",  # noqa: E501
+    }
+    DATASET_MD5: dict = {}
+
+    HF_REPO_ID = "xlzhou126/SpaceDG-Bench"
+    IMG_SENTINEL = ".spacedg_extracted"
 
     @classmethod
     def supported_datasets(cls):
@@ -364,20 +383,49 @@ class SpaceDGBench(ImageBaseDataset):
         return osp.join(cls._dataset_root(), "spacedg_bench.tsv")
 
     def load_data(self, dataset):
-        tsv_path = self._tsv_path()
-        if not osp.isfile(tsv_path):
-            raise FileNotFoundError(
-                f"SpaceDGBench TSV not found: {tsv_path}. "
-                "Run `VLMEvalKit/scripts/preprocess_spacedg_bench_parquet.py` "
-                "to generate TSV + extracted images under LMUData."
-            )
+        # 1) Resolve TSV: prefer explicit env override, otherwise auto-download via parent's prepare_tsv.
+        env_tsv = os.environ.get("SPACEDG_BENCH_TSV_LMU", "").strip()
+        env_root = os.environ.get("SPACEDG_BENCH_ROOT", "").strip()
 
-        df = pd.read_csv(tsv_path, sep="\t")
+        if env_tsv:
+            tsv_path = osp.expanduser(osp.expandvars(env_tsv))
+            if not osp.isfile(tsv_path):
+                raise FileNotFoundError(
+                    f"SPACEDG_BENCH_TSV_LMU points to non-existent file: {tsv_path}"
+                )
+            df = pd.read_csv(tsv_path, sep="\t")
+            self.data_path = tsv_path
+        elif env_root:
+            tsv_path = osp.join(osp.expanduser(osp.expandvars(env_root)), "spacedg_bench.tsv")
+            if not osp.isfile(tsv_path):
+                raise FileNotFoundError(
+                    f"SPACEDG_BENCH_ROOT does not contain spacedg_bench.tsv: {tsv_path}"
+                )
+            df = pd.read_csv(tsv_path, sep="\t")
+            self.data_path = tsv_path
+        else:
+            url = self.DATASET_URL[dataset]
+            md5 = self.DATASET_MD5.get(dataset) or None
+            df = self.prepare_tsv(url, md5)
+            tsv_path = self.data_path
+
         self._tsv_dir = osp.dirname(tsv_path)
 
         missing = _REQUIRED_TSV_COLS - set(df.columns)
         if missing:
             raise ValueError(f"SpaceDGBench: TSV missing columns {sorted(missing)}. tsv={tsv_path}")
+
+        # 2) Extract images from HF parquets into LMUData/images/spacedg_bench/ (once).
+        #    Skipped entirely when SPACEDG_BENCH_ROOT is set (fully manual layout).
+        if not env_root:
+            try:
+                self.prepare_data(tsv_path=tsv_path, df=df)
+            except Exception as e:
+                warnings.warn(
+                    f"[SpaceDGBench] prepare_data failed: {e}. "
+                    "If you've already laid out images manually, you can ignore this warning; "
+                    "otherwise check HuggingFace connectivity / cache."
+                )
 
         # Optional degradation prompt prefix (prepended to question)
         if self.prompt_with_degradation_info:
@@ -396,6 +444,183 @@ class SpaceDGBench(ImageBaseDataset):
             df["question"] = deg.map(_make_deg_prompt) + df["question"].astype(str)
 
         return df
+
+    def prepare_data(self, tsv_path: str, df: Optional[pd.DataFrame] = None):
+        """
+        Ensure images are extracted under ``LMUData/images/spacedg_bench/``.
+
+        Pipeline (matches the upstream preprocessing script):
+        1. Skip fast if the sentinel file already exists at the target root.
+        2. Download the parquet shards under ``data/`` from ``HF_REPO_ID``
+           (only the shards, not the TSV which is already handled separately).
+        3. Stream the shards with pyarrow and write each embedded image to a
+           temporary directory keyed by ``{index}_{j}.jpg``.
+        4. Re-organize the temp images into ``images/spacedg_bench/<relpath>``
+           according to the TSV's ``image_path`` column.
+        5. Remove the temporary directory and write the sentinel.
+
+        The method is idempotent: subsequent calls are O(1) thanks to the
+        sentinel check.
+        """
+        import shutil
+        import time
+
+        try:
+            import pyarrow.dataset as ds  # type: ignore
+        except ImportError as e:
+            raise ImportError(
+                "SpaceDGBench.prepare_data requires `pyarrow`. "
+                "Install with `pip install pyarrow`."
+            ) from e
+
+        lmu_root = LMUDataRoot()
+        target_root = Path(lmu_root) / "images" / "spacedg_bench"
+        sentinel_path = target_root / self.IMG_SENTINEL
+
+        # 1) Fast path: already extracted.
+        if sentinel_path.is_file():
+            return str(target_root)
+
+        target_root.mkdir(parents=True, exist_ok=True)
+
+        # 2) Download parquet shards from HF / ModelScope.
+        if modelscope_flag_set():
+            try:
+                from modelscope import dataset_snapshot_download  # type: ignore
+            except ImportError as e:
+                raise ImportError(
+                    "VLMEVALKIT_USE_MODELSCOPE is set but `modelscope` is not installed."
+                ) from e
+            repo_dir = dataset_snapshot_download(
+                dataset_id=self.HF_REPO_ID,
+                allow_file_pattern=["data/*.parquet"],
+            )
+        else:
+            repo_dir = snapshot_download(
+                repo_id=self.HF_REPO_ID,
+                repo_type="dataset",
+                allow_patterns=["data/*.parquet"],
+            )
+
+        data_dir = Path(repo_dir, "data")
+        shards = sorted(data_dir.glob("spacedg_bench-*-of-*.parquet"))
+        if not shards:
+            shards = sorted(data_dir.glob("*.parquet"))
+        if not shards:
+            raise FileNotFoundError(
+                f"SpaceDGBench: no parquet shards found under {data_dir}. "
+                "Check that the HF repo layout still contains `data/spacedg_bench-*-of-*.parquet`."
+            )
+
+        parquet_dataset = ds.dataset([str(p) for p in shards], format="parquet")
+
+        # 3) Stream-extract image bytes into a tmp dir.
+        tmp_dir = Path(lmu_root) / ".spacedg_tmp_images"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        written = 0
+        seen = 0
+        PRINT_EVERY = 50
+        start_t = time.time()
+        last_t = start_t
+
+        scanner = parquet_dataset.scanner(columns=["id", "images"], batch_size=16)
+        for batch in scanner.to_batches():
+            ids = batch.column(0)
+            imgs_col = batch.column(1)
+            for i in range(batch.num_rows):
+                sid = int(ids[i].as_py())
+                imgs = imgs_col[i]
+                if imgs is None:
+                    continue
+                img_list = imgs.as_py()
+                for j, item in enumerate(img_list):
+                    out_path = tmp_dir / f"{sid}_{j}.jpg"
+                    if out_path.exists():
+                        continue
+                    if isinstance(item, (bytes, bytearray, memoryview)):
+                        out_path.write_bytes(bytes(item))
+                    elif isinstance(item, dict):
+                        b = item.get("bytes")
+                        p = item.get("path")
+                        if b:
+                            out_path.write_bytes(b)
+                        elif p:
+                            out_path.write_bytes(Path(p).read_bytes())
+                        else:
+                            raise ValueError(f"Invalid image item for id={sid}: {item}")
+                    else:
+                        raise ValueError(f"Unknown image item type for id={sid}: {type(item)}")
+                    written += 1
+                seen += 1
+                if seen % PRINT_EVERY == 0:
+                    now = time.time()
+                    dt = now - last_t
+                    rate = (PRINT_EVERY / dt) if dt > 0 else 0.0
+                    print(
+                        f"[SpaceDGBench prepare_data] samples={seen} images_written={written} "
+                        f"rate={rate:.1f} samples/s elapsed={now - start_t:.1f}s",
+                        flush=True,
+                    )
+                    last_t = now
+
+        print(
+            f"[SpaceDGBench prepare_data] extracted images: {written} -> {tmp_dir}",
+            flush=True,
+        )
+
+        # 4) Re-organize tmp images into target_root using TSV's image_path column.
+        if df is None:
+            df = pd.read_csv(tsv_path, sep="\t")
+        if "index" not in df.columns or "image_path" not in df.columns:
+            raise ValueError(
+                f"SpaceDGBench: TSV missing required columns 'index' / 'image_path' (tsv={tsv_path})"
+            )
+
+        moved = 0
+        skipped_existing = 0
+        missing_src = 0
+        for sid, raw in zip(df["index"].tolist(), df["image_path"].tolist()):
+            if sid is None or raw is None:
+                continue
+            sid = int(sid)
+            try:
+                paths = ast.literal_eval(raw) if isinstance(raw, str) else []
+            except (SyntaxError, ValueError) as e:
+                raise ValueError(f"Unexpected image_path for index={sid}: {raw!r}") from e
+            if not isinstance(paths, list) or len(paths) not in (1, 2):
+                raise ValueError(f"Unexpected image_path for index={sid}: {raw!r}")
+
+            for j, relpath in enumerate(paths):
+                src = tmp_dir / f"{sid}_{j}.jpg"
+                dst = target_root / str(relpath)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if dst.exists():
+                    skipped_existing += 1
+                    continue
+                if not src.exists():
+                    missing_src += 1
+                    continue
+                shutil.move(str(src), str(dst))
+                moved += 1
+
+        print(
+            f"[SpaceDGBench prepare_data] organized images under {target_root}: "
+            f"moved={moved} skipped_existing={skipped_existing} missing_src={missing_src}",
+            flush=True,
+        )
+
+        # 5) Cleanup tmp dir + write sentinel atomically.
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            print(f"[SpaceDGBench prepare_data] removed temporary folder: {tmp_dir}", flush=True)
+
+        sentinel_tmp = sentinel_path.with_name(sentinel_path.name + ".tmp")
+        with open(sentinel_tmp, "w", encoding="utf-8") as f:
+            f.write("done")
+        os.replace(sentinel_tmp, sentinel_path)
+
+        return str(target_root)
 
     def dump_image(self, line):
         """

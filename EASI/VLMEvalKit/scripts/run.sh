@@ -1,7 +1,4 @@
-export LMUData=/data/SpaceDG-Bench
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun ../run.py \
-  --model InternVL3_5-8B \
-  --data spacedg_bench \
-  --mode all \
-  --work-dir ../outputs_spacedg \
-  --reuse
+#!/bin/bash
+set -x
+export GPU=$(nvidia-smi --list-gpus | wc -l)
+torchrun --nproc-per-node=$GPU run.py ${@:1}
