@@ -63,8 +63,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun run.py \
 
 ## TODO
 
+- [ ] Release full SpaceDG dataset.
+
+- [x] Release SpaceDG-Bench and evaluation code.
+
 - [ ] Release the full paper and the project page of SpaceDG.
-
-- [ ] Release SpaceDG dataset and SpaceDG-Bench.
-
-- [ ] Confirm Hugging Face dataset / benchmark URLs and dataset card wording.
