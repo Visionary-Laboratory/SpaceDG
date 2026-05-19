@@ -39,9 +39,9 @@ Get **SpaceDG-Bench** from Hugging Face (file layout and notes are on the datase
 export SPACEDG_BENCH_ROOT=/path/to/SpaceDG_Bench
 ```
 
-That skips all Hugging Face downloads for this benchmark. Otherwise, follow the usual VLMEvalKit / EASI environment setup.
+That skips automatic downloads for this benchmark. Otherwise, follow the usual VLMEvalKit / EASI environment setup.
 
-### 3) Run Evaluation with VLMEvalKit
+### 3) Evaluation with VLMEvalKit
 
 We provide an example launcher script:
 
