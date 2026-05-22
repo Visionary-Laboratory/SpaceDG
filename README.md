@@ -1,6 +1,6 @@
 # <img src="assets/logo.png" width="45" /> SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation
 
-[🌐 Homepage](https://github.com/Visionary-Laboratory/SpaceDG) | [🤗 Benchmark](https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench) | [📖 arXiv](https://arxiv.org/abs/2605.22536)
+[🌐 Homepage](https://visionary-laboratory.github.io/SpaceDG/) | [🤗 Benchmark](https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench) | [📖 arXiv](https://arxiv.org/abs/2605.22536)
 
 ![SpaceDG teaser figure](assets/teaser.png)
 
