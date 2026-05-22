@@ -2,6 +2,8 @@
 
 [🌐 Homepage](https://github.com/Visionary-Laboratory/SpaceDG) | [🤗 Benchmark](https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench) | [📖 arXiv](https://arxiv.org/abs/2605.22536)
 
+![SpaceDG teaser figure](assets/teaser.png)
+
 ## Overview
 
 Multimodal Large Language Models (MLLMs) have improved spatial reasoning, yet most benchmarks assume pristine images and ignore real degradations such as motion blur, low light, adverse weather, lens distortion, and compression. This raises a fundamental question: How robust is spatial intelligence when observations are imperfect? To address this question, we introduce **SpaceDG**, the first large-scale dataset for degradation-aware spatial understanding: a physically grounded synthesis pipeline embeds nine degradation types into 3D Gaussian Splatting rendering, yielding roughly 1M QA pairs across nearly 1,000 indoor scenes. We further release **SpaceDG-Bench**, a human-verified benchmark with 1,102 questions spanning 11 reasoning categories and 9 degradation types (10K+ VQA instances). We conduct a comprehensive evaluation of 25 open- and closed-source models. Our analysis identifies four key findings:
@@ -10,8 +12,6 @@ Multimodal Large Language Models (MLLMs) have improved spatial reasoning, yet mo
 - **Second**, humans also suffer clear performance drops under degraded conditions. This suggests that the design of MLLMs should not simply imitate human perception, but should learn degradation-aware spatial knowledge to better handle diverse real-world visual inputs.
 - **Third**, degradation-based supervised fine-tuning yields substantial improvements on both clean and degraded inputs, indicating that exposure to physically grounded degradations can enhance robust spatial understanding.
 - **Finally**, visual degradations affect fine-grained object-level perception (such as object counting) more strongly than certain geometric reasoning tasks (such as camera-centric translation), revealing that detailed visual grounding is particularly sensitive to degraded visual evidence.
-
-![SpaceDG teaser figure](assets/teaser.png)
 
 ## Quick Start (EASI Evaluation)
 
