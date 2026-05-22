@@ -1,6 +1,6 @@
 # <img src="assets/logo.png" width="45" /> SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation
 
-[🌐 Homepage](https://github.com/Visionary-Laboratory/SpaceDG) | [🤗 Benchmark](https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench) | 📖 arXiv (TBD)
+[🌐 Homepage](https://github.com/Visionary-Laboratory/SpaceDG) | [🤗 Benchmark](https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench) | [📖 arXiv](https://arxiv.org/abs/2605.22536)
 
 ## Overview
 
@@ -66,4 +66,17 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun run.py \
 
 - [x] Release SpaceDG-Bench and evaluation code.
 
-- [ ] Release the full paper and the project page of SpaceDG.
+- [x] Release the full paper and the project page of SpaceDG.
+
+<!-- ## Citation
+
+If you find this work useful, please consider citing:
+
+```bibtex
+@article{zhou2026spacedg,
+  title={SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation},
+  author={Zhou, Xiaolong and Liu, Yifei and Gong, Ziyang and Li, Jiarui and Zhao, Qiyue and Niu, Muyao and Ma, Le and Yang, Xue and Zhang, Hongjie and Zhong, Zhihang},
+  journal={arXiv preprint arXiv:2605.22536},
+  year={2026}
+}
+``` -->
