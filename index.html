@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation">
+  <meta name="keywords" content="SpaceDG, spatial reasoning, visual degradation, MLLM, benchmark, 3D Gaussian Splatting">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation</title>
+
+  <link rel="stylesheet" href="./static/css/bootstrap-4.4.1.css">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/icon.png">
+  <link rel="prefetch" href="./static/videos/dg/clean/motion_blur/video.mp4">
+  <link rel="prefetch" href="./static/videos/dg/degraded/motion_blur/video.mp4">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+  <script src="./static/js/dg-viewer.js" defer></script>
+
+  <style>
+    :root {
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --section-gap: 3.5rem;
+      --page-max: 1200px;
+    }
+    .container.is-max-desktop {
+      max-width: var(--page-max);
+      padding-left: 1.75rem;
+      padding-right: 1.75rem;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 280px);
+      color: #1e293b;
+    }
+    .hero:first-of-type {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero:first-of-type .hero-body {
+      padding-bottom: 2rem;
+    }
+    .publication-title.title {
+      font-size: 2.75rem !important;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+    }
+    @media screen and (max-width: 768px) {
+      .publication-title.title {
+        font-size: 1.7rem !important;
+        line-height: 1.15;
+      }
+    }
+    .authors-block {
+      max-width: var(--page-max);
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+    .authors-block sup {
+      font-size: 0.65em;
+      margin-left: 0.05em;
+    }
+    .authors-block .author-gap {
+      display: inline-block;
+      width: 0.6em;
+    }
+    .authors-block .authors-names {
+      font-size: 1.25rem;
+    }
+    .authors-block .authors-affil {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-top: 0.6rem;
+    }
+    .authors-block .authors-affil-row {
+      margin: 0.18rem 0;
+    }
+    .authors-block .authors-note {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 0.45rem;
+    }
+    .authors-block .lab-affiliation {
+      margin-top: 0.75rem;
+      font-size: 1.15rem;
+    }
+    .publication-links .button.is-dark:not([style*="pointer-events"]) {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .publication-links .button.is-dark:not([style*="pointer-events"]):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+    .logo-inline {
+      vertical-align: middle;
+      background: transparent;
+    }
+    .text-container {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 16px 0;
+    }
+    .tldr-box {
+      background: var(--accent-soft);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      font-size: 1.15rem;
+      line-height: 1.65;
+      color: #334155;
+    }
+    .caption-text {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 0.75rem;
+    }
+    .section-block {
+      margin-bottom: var(--section-gap);
+    }
+    .section-title {
+      position: relative;
+      display: block;
+      width: 100%;
+      text-align: center;
+      margin-bottom: 1.5rem !important;
+    }
+    .section-title::after {
+      content: "";
+      display: block;
+      width: 48px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      margin: 0.5rem auto 0;
+    }
+    .fixed-size-teaser,
+    .fixed-size-sample,
+    .fixed-size-result {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .fixed-size-pipeline {
+      width: min(1320px, 90vw);
+      max-width: 90vw;
+      height: auto;
+      display: block;
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .fixed-size-ring {
+      width: 80%;
+      max-width: 80%;
+      height: auto;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .rounded-corners {
+      border-radius: 12px;
+      border: none;
+      box-shadow: none;
+    }
+    .finding-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      text-align: left;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      transition: box-shadow 0.2s ease;
+    }
+    .finding-card:hover {
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    }
+    .finding-card h4 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      line-height: 1.35;
+      margin-bottom: 0.5rem;
+      color: #0f172a;
+    }
+    .vis-3d-module {
+      background: #e8eaed;
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw;
+      margin-right: -50vw;
+      padding: 2.75rem 0 3.25rem;
+      margin-top: var(--section-gap);
+      margin-bottom: var(--section-gap);
+    }
+    .vis-3d-module__inner {
+      max-width: min(1500px, 98vw);
+      margin: 0 auto;
+      padding: 0 0.5rem;
+    }
+    .vis-3d-module .section-title {
+      margin-bottom: 0.75rem !important;
+    }
+    .vis-3d-row-heading {
+      font-size: 1.35rem;
+      font-weight: 600;
+      text-align: center;
+      color: #334155;
+      margin: 0 0 1rem;
+    }
+    .vis-3d-row-heading + .vis-3d-video-row {
+      margin-bottom: 2.25rem;
+    }
+    .vis-3d-video-row {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 1.35rem;
+      width: 100%;
+    }
+    .vis-3d-video-cell {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 26%;
+    }
+    .vis-3d-video-cell video {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      background: #1e293b;
+    }
+    .vis-3d-scene-label {
+      font-size: 0.85rem;
+      color: #64748b;
+      text-align: center;
+      margin-top: 0.4rem;
+    }
+    .vis-3d-note {
+      font-size: 1.12rem;
+      line-height: 1.5;
+      color: #475569;
+      text-align: center;
+      max-width: 100%;
+      margin: 0 auto 1.75rem;
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+    }
+    .vis-3d-note a {
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .vis-3d-note a:hover {
+      text-decoration: underline;
+    }
+    @media screen and (max-width: 1100px) {
+      .vis-3d-note {
+        white-space: normal;
+        font-size: 1rem;
+        line-height: 1.55;
+        padding: 0 0.5rem;
+      }
+    }
+    @media screen and (max-width: 900px) {
+      .vis-3d-video-row {
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .vis-3d-video-cell {
+        max-width: 100%;
+        width: 100%;
+      }
+    }
+    .dg-viewer-wrap {
+      margin-top: 0.5rem;
+    }
+    .dg-viewer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      width: 100%;
+    }
+    .dg-arrow {
+      flex: 0 0 auto;
+      width: 2.75rem;
+      height: 2.75rem;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+    }
+    .dg-arrow:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+    }
+    .dg-viewer-main {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      min-width: 0;
+      max-width: min(1480px, 100%);
+    }
+    .dg-pane {
+      min-width: 0;
+    }
+    .dg-pane-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #334155;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .dg-pane {
+      position: relative;
+    }
+    .dg-pane video {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      background: #1e293b;
+    }
+    .dg-pane-clean video {
+      aspect-ratio: 1752 / 1168;
+      object-fit: contain;
+    }
+    .dg-video-stack {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1752 / 1168;
+      background: #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .dg-degraded-slot {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      border-radius: 8px;
+      background: #1e293b;
+      transition: opacity 0.1s ease;
+    }
+    .dg-degraded-slot:not(.is-active) {
+      opacity: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .dg-degraded-slot.is-active {
+      opacity: 1;
+      visibility: visible;
+      z-index: 1;
+    }
+    .dg-pane-clean.is-loading video {
+      opacity: 0.55;
+    }
+    .dg-pane-degraded.is-loading .dg-degraded-slot.is-active {
+      opacity: 0.55;
+    }
+    .dg-pane-spinner {
+      display: none;
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid rgba(37, 99, 235, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: dg-spin 0.7s linear infinite;
+      pointer-events: none;
+    }
+    .dg-pane.is-loading .dg-pane-spinner {
+      display: block;
+    }
+    @keyframes dg-spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    .dg-level-control {
+      margin-top: 0.75rem;
+      padding: 0 0.25rem;
+    }
+    .dg-level-control.is-hidden {
+      display: none;
+    }
+    .dg-level-control label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      color: #475569;
+      margin-bottom: 0.35rem;
+    }
+    .dg-level-control input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .dg-type-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1e293b;
+      text-align: center;
+      margin: 1.25rem 0 0.75rem;
+    }
+    .dg-type-note {
+      font-size: 0.95rem;
+      color: #475569;
+      text-align: center;
+      max-width: min(1100px, 100%);
+      margin: -0.4rem auto 0.9rem;
+      padding: 0 0.5rem;
+    }
+    .dg-type-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      max-width: min(1200px, 100%);
+      margin: 0 auto;
+    }
+    .dg-type-btn {
+      font-size: 0.82rem;
+      padding: 0.45rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .dg-type-btn:hover {
+      border-color: #93c5fd;
+      color: var(--accent);
+    }
+    .dg-type-btn.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    @media screen and (max-width: 768px) {
+      .dg-viewer {
+        flex-wrap: wrap;
+      }
+      .dg-arrow {
+        order: 2;
+      }
+      .dg-arrow-prev {
+        margin-right: auto;
+      }
+      .dg-arrow-next {
+        margin-left: auto;
+      }
+      .dg-viewer-main {
+        order: 1;
+        width: 100%;
+        grid-template-columns: 1fr;
+      }
+    }
+    .stat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.25rem;
+      margin: 2rem 0;
+    }
+    .stat-grid-single-row {
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      margin: 1.5rem auto;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.25rem;
+      justify-content: center;
+    }
+    .stat-grid-single-row .stat-box {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 200px;
+      padding: 0.55rem 0.4rem;
+    }
+    .stat-grid-single-row .stat-value {
+      font-size: 1.35rem;
+    }
+    .stat-grid-single-row .stat-label {
+      font-size: 0.68rem;
+      line-height: 1.2;
+      margin-top: 0.15rem;
+    }
+    .subsection-heading {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 2rem 0 0.75rem;
+      letter-spacing: -0.01em;
+    }
+    .glance-subsection {
+      margin-top: 0.25rem;
+    }
+    .stat-box {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.75rem;
+      min-width: 150px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .stat-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.12);
+    }
+    .stat-box .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+    .stat-box .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    .code-block {
+      background: #0f172a !important;
+      color: #e2e8f0;
+      padding: 1.25rem 1.5rem !important;
+      border-radius: 10px !important;
+      font-size: 13px !important;
+      line-height: 1.55;
+      border: none !important;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
+    }
+    .code-block code {
+      color: inherit;
+      background: transparent;
+    }
+    .footer {
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+    }
+    .footer .content p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-2 publication-title">
+            <img class="logo-inline" src="./static/images/icon.png" width="63" style="margin-right: 10px;" alt="SpaceDG logo">
+            SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation
+          </h1>
+          <div class="publication-authors authors-block">
+            <div class="authors-names">
+              <span>Xiaolong Zhou<sup>2,3</sup></span><span class="author-gap"></span>
+              <span>Yifei Liu<sup>2,6</sup></span><span class="author-gap"></span>
+              <span>Ziyang Gong<sup>1</sup></span><span class="author-gap"></span>
+              <span>Jiarui Li<sup>4</sup></span><span class="author-gap"></span>
+              <span>Qiyue Zhao<sup>4</sup></span><span class="author-gap"></span>
+              <span>Muyao Niu<sup>5</sup></span><br>
+              <span>Yuanyuan Gao<sup>2,7</sup></span><span class="author-gap"></span>
+              <span>Le Ma<sup>2</sup></span><span class="author-gap"></span>
+              <span>Xue Yang<sup>1</sup></span><span class="author-gap"></span>
+              <span>Hongjie Zhang<sup>2</sup></span><span class="author-gap"></span>
+              <span>Zhihang Zhong<sup>1,†</sup></span>
+            </div>
+            <div class="authors-affil">
+              <div class="authors-affil-row">
+                <sup>1</sup>Shanghai Jiao Tong University<span class="author-gap"></span><span class="author-gap"></span>
+                <sup>2</sup>Shanghai Artificial Intelligence Laboratory
+              </div>
+              <div class="authors-affil-row">
+                <sup>3</sup>University of Electronic Science and Technology of China<span class="author-gap"></span><span class="author-gap"></span>
+                <sup>4</sup>Chongqing University
+              </div>
+              <div class="authors-affil-row">
+                <sup>5</sup>The University of Tokyo<span class="author-gap"></span><span class="author-gap"></span>
+                <sup>6</sup>Beihang University<span class="author-gap"></span><span class="author-gap"></span>
+                <sup>7</sup>Northwestern Polytechnical University
+              </div>
+            </div>
+            <p class="authors-note"><sup>†</sup>Corresponding author</p>
+            <div class="lab-affiliation">
+              <span class="author-block"><a href="https://github.com/Visionary-Laboratory">Visionary Laboratory</a></span>
+            </div>
+          </div>
+          <div class="column has-text-centered" style="margin-top: 1rem;">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2605.22536"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://github.com/Visionary-Laboratory/SpaceDG"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">🤗</span>
+                  <span>Benchmark</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+      <div class="text-container">
+        <p class="tldr-box">
+          <strong>TL;DR:</strong> We introduce <b>SpaceDG</b>, the first large-scale dataset for degradation-aware spatial intelligence,
+          and <b>SpaceDG-Bench</b>, a human-verified benchmark for evaluating MLLMs under visual degradations.
+        </p>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-widescreen section-block dg-viewer-wrap">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title">Visual Degradation Example</h2>
+          <div class="dg-viewer" id="dg-viewer">
+            <button type="button" class="dg-arrow dg-arrow-prev" id="dg-prev" aria-label="Previous degradation type">
+              <i class="fas fa-chevron-left" aria-hidden="true"></i>
+            </button>
+            <div class="dg-viewer-main">
+              <div class="dg-pane dg-pane-clean" id="dg-pane-clean">
+                <p class="dg-pane-label">Clean</p>
+                <span class="dg-pane-spinner" aria-hidden="true"></span>
+                <video id="dg-clean-video" autoplay loop muted playsinline preload="auto"></video>
+              </div>
+              <div class="dg-pane dg-pane-degraded" id="dg-pane-degraded">
+                <p class="dg-pane-label">Degraded</p>
+                <div class="dg-video-stack" id="dg-degraded-stack">
+                  <span class="dg-pane-spinner" aria-hidden="true"></span>
+                  <video id="dg-degraded-a" class="dg-degraded-slot is-active" autoplay loop muted playsinline preload="auto"></video>
+                  <video id="dg-degraded-b" class="dg-degraded-slot" autoplay loop muted playsinline preload="auto"></video>
+                </div>
+                <div class="dg-level-control" id="dg-level-control">
+                  <label for="dg-level-slider">
+                    <span>Degradation level</span>
+                    <span id="dg-level-value">1</span>
+                  </label>
+                  <input type="range" id="dg-level-slider" min="1" max="5" step="1" value="1">
+                </div>
+              </div>
+            </div>
+            <button type="button" class="dg-arrow dg-arrow-next" id="dg-next" aria-label="Next degradation type">
+              <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p class="dg-type-title" id="dg-type-title">Motion Blur</p>
+          <p class="dg-type-note" id="dg-type-note" style="display:none;"></p>
+          <div class="dg-type-buttons" id="dg-type-buttons" role="tablist" aria-label="Degradation types"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title">Abstract</h2>
+          <div class="content has-text-justified">
+            <p style="font-size:18px;">
+              Multimodal Large Language Models (MLLMs) have made rapid progress in spatial intelligence, yet existing spatial reasoning benchmarks largely assume pristine visual inputs and overlook the degradations that commonly occur in real-world deployment, such as motion blur, low light, adverse weather, lens distortion, and compression artifacts. This raises a fundamental question: <em>How robust is the spatial intelligence of current MLLMs when visual observations are imperfect?</em> To answer this question, we introduce <b>SpaceDG</b>, the first large-scale dataset for degradation-aware spatial understanding. It is constructed with a physically grounded degradation synthesis engine that embeds degradation formation process into 3D Gaussian Splatting (3DGS) rendering, enabling realistic simulation of nine degradation types. The resulting dataset contains approximately 1M QA pairs with over 160K images. We further introduce <b>SpaceDG-Bench</b>, an human-verified benchmark with 1,102 unique questions spanning 11 question types and 9 visual degradation types, yielding 10K VQA instances. Evaluating 25 open- and closed-source MLLMs reveals that visual degradations consistently and substantially impair spatial reasoning, exposing a critical robustness gap. Finally, we show that finetuning on SpaceDG markedly improves degradation robustness and can even surpass human performance under degraded conditions without any performance drop on clean images, highlighting the promise of degradation-aware training for robust spatial intelligence.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <img class="fixed-size-teaser rounded-corners" src="./static/images/teaser.jpg" alt="SpaceDG teaser">
+        <div class="text-container">
+          <p class="caption-text" style="font-size: 1.1rem; margin: 1.25rem auto 0;">
+            A physically grounded synthesis pipeline embeds <b>9 degradation types</b> into 3D Gaussian Splatting rendering,
+            yielding <b>971K QA pairs</b> across nearly <b>1,000 indoor scenes</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title">SpaceDG at a Glance</h2>
+          <div class="stat-grid stat-grid-single-row">
+            <div class="stat-box">
+              <div class="stat-value">971K</div>
+              <div class="stat-label">QA pairs (SpaceDG)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">1.1K</div>
+              <div class="stat-label">benchmark questions</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">11</div>
+              <div class="stat-label">question types</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">9</div>
+              <div class="stat-label">degradation types</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">25</div>
+              <div class="stat-label">models evaluated</div>
+            </div>
+          </div>
+          <div class="glance-subsection">
+            <h3 class="subsection-heading">Example</h3>
+            <img class="fixed-size-sample rounded-corners" src="./static/images/sample.jpg" alt="SpaceDG-Bench example QA instances">
+          </div>
+
+          <div class="glance-subsection">
+            <h3 class="subsection-heading">Distribution</h3>
+            <img class="fixed-size-ring rounded-corners" src="./static/images/ring.jpg" alt="SpaceDG-Bench taxonomy and degradation distribution">
+            <p class="caption-text">
+              Taxonomy of question types and degradation types in SpaceDG-Bench.
+            </p>
+          </div>
+
+          <div class="glance-subsection">
+            <h3 class="subsection-heading">Leader Board</h3>
+            <img class="fixed-size-result rounded-corners" src="./static/images/result.jpg" alt="SpaceDG-Bench evaluation results (leaderboard)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title has-text-centered">Key Findings</h2>
+          <div class="finding-card">
+            <h4>1. Degradations consistently impair spatial reasoning</h4>
+            <p style="font-size:17px;">
+              Visual degradations consistently impair spatial reasoning across all evaluated MLLMs,
+              highlighting the need for degradation-aware spatial evaluation.
+            </p>
+          </div>
+          <div class="finding-card">
+            <h4>2. Humans also degrade — models should go beyond imitation</h4>
+            <p style="font-size:17px;">
+              Humans also suffer clear performance drops under degraded conditions.
+              MLLMs should learn degradation-aware spatial knowledge rather than simply imitate human perception.
+            </p>
+          </div>
+          <div class="finding-card">
+            <h4>3. Degradation-aware fine-tuning helps on clean and degraded inputs</h4>
+            <p style="font-size:17px;">
+              Degradation-based supervised fine-tuning yields substantial improvements on both clean and degraded inputs,
+              indicating that physically grounded degradations can enhance robust spatial understanding.
+            </p>
+          </div>
+          <div class="finding-card">
+            <h4>4. Fine-grained perception is more sensitive than geometry</h4>
+            <p style="font-size:17px;">
+              Visual degradations affect fine-grained object-level perception (e.g., object counting) more strongly
+              than certain geometric reasoning tasks (e.g., camera-centric translation),
+              revealing that detailed visual grounding is particularly sensitive to degraded evidence.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title">Method Overview</h2>
+          <img class="fixed-size-pipeline rounded-corners" src="./static/images/pipe.jpg" alt="SpaceDG pipeline overview">
+          <div class="content has-text-justified">
+            <p style="margin-top: 30px; font-size:18px;">
+              <b>Illustration of our proposed SpaceDG pipeline:</b>
+              Starting from multi-view indoor captures, we optimize 3D Gaussian Splatting with depth priors,
+              apply physically grounded pre- and post-render degradation synthesis, and generate spatial QA pairs
+              via structured question design. An MLLM filter and human experts refine candidates into a
+              <b>971K</b> training set and a <b>1.1K</b> human-verified benchmark (SpaceDG-Bench).
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="vis-3d-module" aria-label="3D annotation and depth visualization">
+    <div class="vis-3d-module__inner">
+      <h2 class="title is-3 section-title">3D Annotation &amp; Depth Visualization</h2>
+      <p class="vis-3d-note">Our 3D annotation pipeline mainly follows Holi-Spatial. For the detailed data construction procedure, please refer to <a href="https://visionary-laboratory.github.io/holi-spatial/" target="_blank" rel="noopener">Holi-Spatial</a>.</p>
+      <p class="vis-3d-row-heading">3D Annotations</p>
+      <div class="vis-3d-video-row">
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/bbox/0a76e06478.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene 0a76e06478</p>
+        </div>
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/bbox/1a22a99186.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene 1a22a99186</p>
+        </div>
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/bbox/b5918e4637.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene b5918e4637</p>
+        </div>
+      </div>
+      <p class="vis-3d-row-heading">Refined Depth</p>
+      <div class="vis-3d-video-row">
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/depth/0a76e06478.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene 0a76e06478</p>
+        </div>
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/depth/1a22a99186.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene 1a22a99186</p>
+        </div>
+        <div class="vis-3d-video-cell">
+          <video src="./static/videos/depth/b5918e4637.mp4" autoplay loop muted playsinline controls></video>
+          <p class="vis-3d-scene-label">Scene b5918e4637</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title">Degradation-wise Correlation Analysis</h2>
+          <img class="fixed-size-result rounded-corners" src="./static/images/cor.jpg" alt="Degradation-wise correlation analysis on SpaceDG-Bench">
+          <div class="content has-text-justified">
+            <p style="margin-top: 30px; font-size:18px;">
+              <b>Degradation-wise correlation analysis:</b>
+              We quantify how sensitive spatial reasoning is to each degradation using the absolute point-biserial Pearson correlation
+              |<i>r</i>| between clean and degraded scores across all evaluated models (panels a–d show overall degradation effects,
+              answer format, task group, and atomic question type, respectively).
+              Low light and haze consistently induce the largest performance drops, whereas over-exposure and distortion are comparatively milder.
+              Multiple-choice questions show higher degradation correlation than numerical-answer questions; object-centric tasks are more
+              sensitive than camera-centric tasks; and fine-grained perception tasks (e.g., object existence and counting) correlate more
+              strongly with degradations than global geometric tasks (e.g., camera translation).
+              These results suggest that visual degradations primarily impair fine-grained semantic perception and thus disproportionately
+              affect tasks requiring detailed visual grounding.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container is-max-desktop section-block">
+    <div class="columns is-centered">
+      <div class="column is-full">
+        <div class="hero-body">
+          <h2 class="title is-3 section-title has-text-centered">Quick Start (Evaluation)</h2>
+          <div class="content has-text-justified">
+            <p style="font-size:18px;">
+              SpaceDG-Bench is integrated with our EASI evaluation toolkit (VLMEvalKit).
+              Download the benchmark from
+              <a href="https://huggingface.co/datasets/xlzhou126/SpaceDG-Bench">Hugging Face</a>,
+              and see the <a href="https://github.com/Visionary-Laboratory/SpaceDG">GitHub repository</a> for full setup instructions and launcher scripts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            Thanks to the authors of <a href="https://nerfies.github.io/">Nerfies</a> and
+            <a href="https://visionary-laboratory.github.io/Proxy-GS/">Proxy-GS</a> for their webpage templates.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
