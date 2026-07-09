@@ -68,15 +68,18 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 torchrun run.py \
 
 - [x] Release the full paper and the project page of SpaceDG.
 
-<!-- ## Citation
+## Citation
 
 If you find this work useful, please consider citing:
 
 ```bibtex
-@article{zhou2026spacedg,
-  title={SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation},
-  author={Zhou, Xiaolong and Liu, Yifei and Gong, Ziyang and Li, Jiarui and Zhao, Qiyue and Niu, Muyao and Ma, Le and Yang, Xue and Zhang, Hongjie and Zhong, Zhihang},
-  journal={arXiv preprint arXiv:2605.22536},
-  year={2026}
+@misc{zhou2026spacedgbenchmarkingspatialintelligence,
+      title={SpaceDG: Benchmarking Spatial Intelligence under Visual Degradation}, 
+      author={Xiaolong Zhou and Yifei Liu and Ziyang Gong and Jiarui Li and Qiyue Zhao and Muyao Niu and Yuanyuan Gao and Le Ma and Xue Yang and Hongjie Zhang and Zhihang Zhong},
+      year={2026},
+      eprint={2605.22536},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2605.22536}, 
 }
-``` -->
+```
